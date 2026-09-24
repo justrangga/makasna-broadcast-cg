@@ -1,6 +1,7 @@
 import { app, BrowserWindow, ipcMain, screen } from 'electron';
 import path from 'path';
 import { OutputServer } from './output-server';
+import { DeckLinkController } from './decklink-controller';
 import { FSWatcher, watch } from 'chokidar';
 import * as XLSX from 'xlsx';
 
@@ -14,6 +15,7 @@ let mainWindow: BrowserWindow | null = null;
 let outputWindow: BrowserWindow | null = null;
 let outputServer: OutputServer | null = null;
 let fileWatcher: FSWatcher | null = null;
+const decklinkController = new DeckLinkController();
 
 const isDev = process.env.NODE_ENV === 'development';
 
@@ -54,16 +56,16 @@ async function createWindow() {
 }
 
 // Open secondary fullscreen transparent window (HDMI / DisplayPort output)
-function openSecondaryOutputWindow(displayId?: number) {
+function openSecondaryOutputWindow(displayId?: number, testPattern: string = 'none') {
   if (outputWindow) {
     outputWindow.focus();
     return;
   }
 
   const displays = screen.getAllDisplays();
-  // Target second display if available, else primary
+  // Target requested display if available, else second display, else primary
   const targetDisplay =
-    (displayId ? displays.find((d) => d.id === displayId) : displays[1]) || displays[0];
+    (displayId !== undefined ? displays.find((d) => d.id === displayId) : displays[1]) || displays[0];
 
   outputWindow = new BrowserWindow({
     x: targetDisplay.bounds.x,
@@ -86,9 +88,14 @@ function openSecondaryOutputWindow(displayId?: number) {
 
   outputWindow.setIgnoreMouseEvents(true);
 
+  const queryParams = new URLSearchParams({
+    output: 'pgm',
+    pattern: testPattern,
+  }).toString();
+
   const url = isDev
-    ? 'http://localhost:5173?output=pgm'
-    : `file://${path.join(__dirname, '../renderer/index.html')}?output=pgm`;
+    ? `http://localhost:5173?${queryParams}`
+    : `file://${path.join(__dirname, '../renderer/index.html')}?${queryParams}`;
 
   outputWindow.loadURL(url);
 
@@ -117,14 +124,30 @@ ipcMain.handle('get-displays', () => {
   }));
 });
 
-ipcMain.handle('open-secondary-output', (_event, displayId) => {
-  openSecondaryOutputWindow(displayId);
+ipcMain.handle('open-secondary-output', (_event, displayId?: number, testPattern?: string) => {
+  openSecondaryOutputWindow(displayId, testPattern);
   return true;
 });
 
 ipcMain.handle('close-secondary-output', () => {
   closeSecondaryOutputWindow();
   return true;
+});
+
+ipcMain.handle('get-decklink-devices', () => {
+  return decklinkController.getDevices();
+});
+
+ipcMain.handle('start-decklink-output', (_event, config) => {
+  return decklinkController.startOutput(config);
+});
+
+ipcMain.handle('stop-decklink-output', () => {
+  return decklinkController.stopOutput();
+});
+
+ipcMain.handle('get-decklink-status', () => {
+  return decklinkController.getStatus();
 });
 
 ipcMain.handle('watch-spreadsheet-file', (_event, filePath: string) => {

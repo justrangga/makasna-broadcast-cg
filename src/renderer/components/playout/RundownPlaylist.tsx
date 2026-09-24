@@ -12,8 +12,10 @@ import {
   Monitor,
   Wifi,
   ExternalLink,
+  Settings,
 } from 'lucide-react';
 import { LayerTarget } from '@shared/types';
+import { OutputSettingsModal } from '../output/OutputSettingsModal';
 
 export const RundownPlaylist: React.FC = () => {
   const { project } = useCGStore();
@@ -36,6 +38,7 @@ export const RundownPlaylist: React.FC = () => {
   const [editingItemId, setEditingItemId] = useState<string | null>(null);
   const [editOverrides, setEditOverrides] = useState<Record<string, string | number>>({});
   const [copiedUrl, setCopiedUrl] = useState(false);
+  const [isOutputModalOpen, setIsOutputModalOpen] = useState(false);
 
   const handleStartEdit = (item: (typeof rundown)[0]) => {
     setEditingItemId(item.id);
@@ -167,6 +170,16 @@ export const RundownPlaylist: React.FC = () => {
           >
             <Monitor className="w-3.5 h-3.5" />
             <span>HDMI / DISPLAY: {isSecondaryWindowOpen ? 'OPEN' : 'CLOSED'}</span>
+          </button>
+
+          {/* Dedicated Hardware & DeckLink Routing Button */}
+          <button
+            onClick={() => setIsOutputModalOpen(true)}
+            className="flex items-center space-x-1.5 px-3 py-1.5 rounded text-xs font-semibold bg-studio-750 hover:bg-studio-700 text-slate-200 border border-studio-600 transition"
+            title="Buka Pengaturan Hardware: Blackmagic DeckLink SDI Key & Fill, Display Sekunder"
+          >
+            <Settings className="w-3.5 h-3.5 text-rose-400" />
+            <span>Setup Output</span>
           </button>
         </div>
       </div>
@@ -313,6 +326,12 @@ export const RundownPlaylist: React.FC = () => {
           );
         })}
       </div>
+
+      {/* Hardware & Broadcast Output Settings Modal */}
+      <OutputSettingsModal
+        isOpen={isOutputModalOpen}
+        onClose={() => setIsOutputModalOpen(false)}
+      />
     </div>
   );
 };

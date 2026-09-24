@@ -180,3 +180,60 @@ export interface ActiveOnAirGraphic {
   elapsedTime: number; // seconds
   dataOverrides: Record<string, string | number>;
 }
+
+export type DeckLinkVideoStandard =
+  | '1080p60'
+  | '1080p59.94'
+  | '1080p50'
+  | '1080i59.94'
+  | '1080i50'
+  | '720p60'
+  | '720p59.94'
+  | '2160p60'
+  | '2160p59.94';
+
+export type DeckLinkKeyerMode =
+  | 'external' // External Key & Fill (SDI 1 = Fill, SDI 2 = Key)
+  | 'internal' // Internal Keying over SDI Pass-Through
+  | 'single';   // Single Output (Pre-multiplied Alpha)
+
+export interface DeckLinkDevice {
+  index: number;
+  name: string;
+  modelName: string;
+  hasKeyer: boolean;
+  supports4K: boolean;
+  status: 'idle' | 'on_air' | 'disconnected';
+}
+
+export interface DeckLinkConfig {
+  enabled: boolean;
+  deviceIndex: number;
+  deviceName: string;
+  videoStandard: DeckLinkVideoStandard;
+  keyerMode: DeckLinkKeyerMode;
+  pixelFormat: '8BitYUV' | '8BitBGRA' | '10BitRGB';
+  bufferFrames: number;
+  syncGenlock: boolean;
+  keyLevel: number; // 0 to 255 for internal keyer
+}
+
+export interface DisplayOutputConfig {
+  enabled: boolean;
+  displayId: number;
+  fullscreen: boolean;
+  transparent: boolean;
+  alwaysOnTop: boolean;
+  ignoreMouseEvents: boolean;
+  testPattern: 'none' | 'smpte-bars' | 'alpha-grid' | 'green-screen';
+}
+
+export interface BroadcastOutputsState {
+  display: DisplayOutputConfig;
+  decklink: DeckLinkConfig;
+  ndi: {
+    enabled: boolean;
+    streamName: string;
+    includeAlpha: boolean;
+  };
+}

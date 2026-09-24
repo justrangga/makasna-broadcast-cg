@@ -11,13 +11,16 @@ import {
   Cpu,
   Monitor,
   Radio,
+  Settings,
 } from 'lucide-react';
 import { SmartDataModal } from './datahub/SmartDataModal';
+import { OutputSettingsModal } from './output/OutputSettingsModal';
 
 export const Header: React.FC = () => {
   const { mode, setMode, project, setProject } = useCGStore();
-  const { isNDIActive, stats } = usePlayoutStore();
+  const { isNDIActive, stats, isSecondaryWindowOpen } = usePlayoutStore();
   const [isDataModalOpen, setIsDataModalOpen] = useState(false);
+  const [isOutputModalOpen, setIsOutputModalOpen] = useState(false);
 
   const handleExportProject = () => {
     const dataStr = 'data:text/json;charset=utf-8,' + encodeURIComponent(JSON.stringify(project, null, 2));
@@ -114,32 +117,57 @@ export const Header: React.FC = () => {
           </button>
         </div>
 
-        {/* Right Broadcast Engine Telemetry */}
-        <div className="flex items-center space-x-4 text-xs font-mono">
+        {/* Right Broadcast Engine Telemetry & Output Settings */}
+        <div className="flex items-center space-x-3 text-xs font-mono">
+          {/* Output Settings Button */}
+          <button
+            onClick={() => setIsOutputModalOpen(true)}
+            className="flex items-center space-x-1.5 px-3 py-1 rounded bg-studio-800 hover:bg-studio-750 text-slate-200 border border-studio-700 font-sans font-semibold text-xs transition"
+            title="Konfigurasi Output Hardware: DeckLink SDI, HDMI Fullscreen, NDI"
+          >
+            <Settings className="w-3.5 h-3.5 text-rose-400" />
+            <span>Hardware Output</span>
+          </button>
+
+          {/* Display Output Indicator */}
+          <div
+            onClick={() => setIsOutputModalOpen(true)}
+            className={`cursor-pointer flex items-center space-x-1 px-2 py-0.5 rounded text-[11px] ${
+              isSecondaryWindowOpen
+                ? 'bg-emerald-500/20 text-emerald-300 border border-emerald-500/40'
+                : 'text-slate-500'
+            }`}
+          >
+            <Monitor className="w-3 h-3" />
+            <span>DISP: {isSecondaryWindowOpen ? 'ON' : 'OFF'}</span>
+          </div>
+
           {/* NDI Status */}
           <div
-            className={`flex items-center space-x-1 px-2 py-0.5 rounded text-[11px] ${
+            onClick={() => setIsOutputModalOpen(true)}
+            className={`cursor-pointer flex items-center space-x-1 px-2 py-0.5 rounded text-[11px] ${
               isNDIActive
                 ? 'bg-cyan-500/20 text-cyan-300 border border-cyan-500/40 animate-pulse'
                 : 'text-slate-500'
             }`}
           >
             <Wifi className="w-3 h-3" />
-            <span>NDI: {isNDIActive ? '1080p60 ON AIR' : 'OFF'}</span>
+            <span>NDI: {isNDIActive ? 'ON' : 'OFF'}</span>
           </div>
 
           {/* Engine FPS & Latency */}
-          <div className="flex items-center space-x-1 text-slate-400">
+          <div className="flex items-center space-x-1 text-slate-400 pl-1 border-l border-studio-800">
             <Cpu className="w-3.5 h-3.5 text-emerald-400" />
             <span className="text-emerald-400 font-bold">{stats.fps.toFixed(1)} FPS</span>
-            <span className="text-slate-600">|</span>
-            <span className="text-slate-500">GPU V-Sync</span>
           </div>
         </div>
       </header>
 
       {/* Smart Data Hub Modal */}
       <SmartDataModal isOpen={isDataModalOpen} onClose={() => setIsDataModalOpen(false)} />
+
+      {/* Hardware & Broadcast Output Settings Modal */}
+      <OutputSettingsModal isOpen={isOutputModalOpen} onClose={() => setIsOutputModalOpen(false)} />
     </>
   );
 };
