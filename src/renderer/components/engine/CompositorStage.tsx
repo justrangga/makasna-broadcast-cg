@@ -13,6 +13,7 @@ interface CompositorStageProps {
   showBoundingBoxes?: boolean;
   selectedLayerId?: string | null;
   onSelectLayer?: (layerId: string) => void;
+  onLayerMouseDown?: (layerId: string, e: React.MouseEvent) => void;
 }
 
 export const CompositorStage: React.FC<CompositorStageProps> = ({
@@ -26,6 +27,7 @@ export const CompositorStage: React.FC<CompositorStageProps> = ({
   showBoundingBoxes = false,
   selectedLayerId = null,
   onSelectLayer,
+  onLayerMouseDown,
 }) => {
   const scale = width / 1920;
 
@@ -83,6 +85,12 @@ export const CompositorStage: React.FC<CompositorStageProps> = ({
             onSelectLayer(layer.id);
           }
         }}
+        onMouseDown={(e) => {
+          if (showBoundingBoxes && onLayerMouseDown) {
+            e.stopPropagation();
+            onLayerMouseDown(layer.id, e);
+          }
+        }}
         style={{
           position: 'absolute',
           left: `${computed.x}px`,
@@ -96,8 +104,30 @@ export const CompositorStage: React.FC<CompositorStageProps> = ({
           pointerEvents: showBoundingBoxes ? 'auto' : 'none',
           ...clipPathStyle,
         }}
-        className={isSelected && showBoundingBoxes ? 'ring-2 ring-cyan-400 ring-offset-2 ring-offset-transparent cursor-pointer' : ''}
+        className={
+          isSelected && showBoundingBoxes
+            ? 'ring-2 ring-cyan-400 ring-offset-2 ring-offset-transparent cursor-move'
+            : showBoundingBoxes
+            ? 'hover:ring-1 hover:ring-cyan-500/50 cursor-pointer'
+            : ''
+        }
       >
+        {/* Selected Layer Bounding Box Handles */}
+        {isSelected && showBoundingBoxes && (
+          <div className="absolute inset-0 pointer-events-none">
+            {/* 4 Corner Dots */}
+            <div className="absolute -top-1.5 -left-1.5 w-3 h-3 bg-white border-2 border-cyan-400 rounded-sm shadow" />
+            <div className="absolute -top-1.5 -right-1.5 w-3 h-3 bg-white border-2 border-cyan-400 rounded-sm shadow" />
+            <div className="absolute -bottom-1.5 -left-1.5 w-3 h-3 bg-white border-2 border-cyan-400 rounded-sm shadow" />
+            <div className="absolute -bottom-1.5 -right-1.5 w-3 h-3 bg-white border-2 border-cyan-400 rounded-sm shadow" />
+
+            {/* Layer Info Floating Badge */}
+            <div className="absolute -top-6 left-0 bg-cyan-500 text-black px-1.5 py-0.5 rounded text-[10px] font-mono font-bold tracking-tight shadow whitespace-nowrap">
+              {layer.name} ({Math.round(computed.x)}, {Math.round(currentY)})
+            </div>
+          </div>
+        )}
+
         {/* SHAPE LAYER */}
         {layer.type === 'shape' && (
           <div

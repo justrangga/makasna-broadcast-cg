@@ -1,7 +1,7 @@
-import React, { useRef } from 'react';
+import React, { useRef, useState, useEffect } from 'react';
 import { useCGStore } from '@/store/useCGStore';
 import { CompositorStage } from '../engine/CompositorStage';
-import { Crosshair, Eye, Grid, Database, Sparkles } from 'lucide-react';
+import { Crosshair, Grid, Database, Sparkles, Move } from 'lucide-react';
 
 export const CanvasViewport: React.FC = () => {
   const {
@@ -24,6 +24,17 @@ export const CanvasViewport: React.FC = () => {
   const activeTemplate = project.templates.find((t) => t.id === activeTemplateId);
   const selectedLayer = activeTemplate?.layers.find((l) => l.id === selectedLayerId);
 
+  // Dragging layer state on canvas
+  const [dragState, setDragState] = useState<{
+    isDragging: boolean;
+    layerId: string;
+    layerName: string;
+    startX: number;
+    startY: number;
+    currentX: number;
+    currentY: number;
+  } | null>(null);
+
   // All available headers across datasets
   const availableColumns = Array.from(
     new Set(project.datasets.flatMap((d) => d.headers))
@@ -39,6 +50,173 @@ export const CanvasViewport: React.FC = () => {
     });
   };
 
+  // Direct Layer Dragging with Mouse on 1080p Canvas
+  const handleLayerMouseDown = (layerId: string, e: React.MouseEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+
+    if (!activeTemplate) return;
+    const layer = activeTemplate.layers.find((l) => l.id === layerId);
+    if (!layer || layer.locked) return;
+
+    setSelectedLayerId(layerId);
+
+    const startClientX = e.clientX;
+    const startClientY = e.clientY;
+    const initialLayerX = layer.transform.x;
+    const initialLayerY = layer.transform.y;
+    const initialKeyframes = [...layer.keyframes];
+
+    setDragState({
+      isDragging: true,
+      layerId,
+      layerName: layer.name,
+      startX: initialLayerX,
+      startY: initialLayerY,
+      currentX: initialLayerX,
+      currentY: initialLayerY,
+    });
+
+    const onMouseMove = (moveEvent: MouseEvent) => {
+      const dx = (moveEvent.clientX - startClientX) / zoom;
+      const dy = (moveEvent.clientY - startClientY) / zoom;
+
+      let newX = Math.round(initialLayerX + dx);
+      let newY = Math.round(initialLayerY + dy);
+
+      // Shift key constraint: axis-aligned (horizontal only or vertical only)
+      if (moveEvent.shiftKey) {
+        if (Math.abs(dx) > Math.abs(dy)) {
+          newY = initialLayerY;
+        } else {
+          newX = initialLayerX;
+        }
+      }
+
+      // Magnetic snapping to canvas center lines (1920/2 = 960, 1080/2 = 540)
+      const centerX = newX + layer.transform.width / 2;
+      const centerY = newY + layer.transform.height / 2;
+      if (Math.abs(centerX - 960) < 12) {
+        newX = Math.round(960 - layer.transform.width / 2);
+      }
+      if (Math.abs(centerY - 540) < 12) {
+        newY = Math.round(540 - layer.transform.height / 2);
+      }
+
+      // Shift all keyframes with x/y so the whole motion choreography moves seamlessly
+      const deltaXFromInitial = newX - initialLayerX;
+      const deltaYFromInitial = newY - initialLayerY;
+
+      const updatedKeyframes = initialKeyframes.map((kf) => ({
+        ...kf,
+        props: {
+          ...kf.props,
+          ...(kf.props.x !== undefined
+            ? { x: Math.round((kf.props.x || 0) + deltaXFromInitial) }
+            : {}),
+          ...(kf.props.y !== undefined
+            ? { y: Math.round((kf.props.y || 0) + deltaYFromInitial) }
+            : {}),
+        },
+      }));
+
+      updateLayer(activeTemplate.id, layerId, {
+        transform: {
+          ...layer.transform,
+          x: newX,
+          y: newY,
+        },
+        keyframes: updatedKeyframes,
+      });
+
+      setDragState((prev) =>
+        prev
+          ? {
+              ...prev,
+              currentX: newX,
+              currentY: newY,
+            }
+          : null
+      );
+    };
+
+    const onMouseUp = () => {
+      window.removeEventListener('mousemove', onMouseMove);
+      window.removeEventListener('mouseup', onMouseUp);
+      setDragState(null);
+    };
+
+    window.addEventListener('mousemove', onMouseMove);
+    window.addEventListener('mouseup', onMouseUp);
+  };
+
+  // Keyboard Arrow Keys Nudge for Selected Layer
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      // Ignore if typing in input/textarea/select
+      const activeTag = (document.activeElement as HTMLElement)?.tagName;
+      if (['INPUT', 'TEXTAREA', 'SELECT'].includes(activeTag)) {
+        return;
+      }
+
+      if (!activeTemplate || !selectedLayerId || !selectedLayer || selectedLayer.locked) {
+        return;
+      }
+
+      const step = e.shiftKey ? 10 : 1;
+      let handled = false;
+      let newX = selectedLayer.transform.x;
+      let newY = selectedLayer.transform.y;
+
+      if (e.key === 'ArrowLeft') {
+        newX -= step;
+        handled = true;
+      } else if (e.key === 'ArrowRight') {
+        newX += step;
+        handled = true;
+      } else if (e.key === 'ArrowUp') {
+        newY -= step;
+        handled = true;
+      } else if (e.key === 'ArrowDown') {
+        newY += step;
+        handled = true;
+      } else if (e.key === 'Escape') {
+        setSelectedLayerId(null);
+        handled = true;
+      }
+
+      if (
+        handled &&
+        (newX !== selectedLayer.transform.x || newY !== selectedLayer.transform.y)
+      ) {
+        e.preventDefault();
+        const deltaX = newX - selectedLayer.transform.x;
+        const deltaY = newY - selectedLayer.transform.y;
+
+        const updatedKeyframes = selectedLayer.keyframes.map((kf) => ({
+          ...kf,
+          props: {
+            ...kf.props,
+            ...(kf.props.x !== undefined
+              ? { x: Math.round((kf.props.x || 0) + deltaX) }
+              : {}),
+            ...(kf.props.y !== undefined
+              ? { y: Math.round((kf.props.y || 0) + deltaY) }
+              : {}),
+          },
+        }));
+
+        updateLayer(activeTemplate.id, selectedLayerId, {
+          transform: { ...selectedLayer.transform, x: newX, y: newY },
+          keyframes: updatedKeyframes,
+        });
+      }
+    };
+
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [activeTemplate, selectedLayerId, selectedLayer, updateLayer, setSelectedLayerId]);
+
   if (!activeTemplate) {
     return (
       <div className="flex-1 flex items-center justify-center bg-studio-950 text-slate-500">
@@ -52,7 +230,7 @@ export const CanvasViewport: React.FC = () => {
   const canvasHeight = 1080 * zoom;
 
   return (
-    <div className="flex-1 flex flex-col bg-studio-950 overflow-hidden relative">
+    <div className="flex-1 flex flex-col bg-studio-950 overflow-hidden relative font-display">
       {/* Top Viewport Toolbar */}
       <div className="h-10 bg-studio-900 border-b border-studio-800 px-4 flex items-center justify-between text-xs text-slate-400 z-10">
         <div className="flex items-center space-x-3">
@@ -133,7 +311,11 @@ export const CanvasViewport: React.FC = () => {
             key={col}
             onClick={() => handleBindColumn(col)}
             className="px-2.5 py-0.5 rounded-full bg-studio-950 border border-cyan-500/40 text-cyan-300 hover:bg-cyan-500/20 active:scale-95 transition font-mono shrink-0"
-            title={selectedLayer ? `Klik untuk menghubungkan [${col}] ke layer '${selectedLayer.name}'` : `Pilih layer terlebih dahulu lalu klik chip [${col}]`}
+            title={
+              selectedLayer
+                ? `Klik untuk menghubungkan [${col}] ke layer '${selectedLayer.name}'`
+                : `Pilih layer terlebih dahulu lalu klik chip [${col}]`
+            }
           >
             + [{col}]
           </button>
@@ -168,7 +350,7 @@ export const CanvasViewport: React.FC = () => {
             }}
           />
 
-          {/* Broadcast Stage Renderer */}
+          {/* Broadcast Stage Renderer with Free Layer Dragging */}
           <CompositorStage
             template={activeTemplate}
             currentTime={currentTime}
@@ -178,6 +360,7 @@ export const CanvasViewport: React.FC = () => {
             showBoundingBoxes={true}
             selectedLayerId={selectedLayerId}
             onSelectLayer={(id) => setSelectedLayerId(id)}
+            onLayerMouseDown={handleLayerMouseDown}
           />
 
           {/* Action-Safe & Title-Safe Overlays (SMPTE standard) */}
@@ -223,6 +406,28 @@ export const CanvasViewport: React.FC = () => {
             </div>
           )}
         </div>
+
+        {/* Live Dragging Floating Coordinates HUD */}
+        {dragState?.isDragging && (
+          <div className="absolute bottom-6 left-6 z-40 bg-studio-950/90 border border-cyan-400/80 rounded-lg px-4 py-2 shadow-2xl flex items-center space-x-3 font-mono text-xs backdrop-blur-md">
+            <Move className="w-4 h-4 text-cyan-400 animate-pulse" />
+            <span className="font-bold text-white tracking-wide">
+              {dragState.layerName}
+            </span>
+            <span className="text-cyan-400 font-semibold bg-studio-900 px-2 py-0.5 rounded border border-studio-700">
+              X: {dragState.currentX}px
+            </span>
+            <span className="text-cyan-400 font-semibold bg-studio-900 px-2 py-0.5 rounded border border-studio-700">
+              Y: {dragState.currentY}px
+            </span>
+            <span className="text-slate-400 text-[10px]">
+              (ΔX: {dragState.currentX - dragState.startX >= 0 ? '+' : ''}
+              {dragState.currentX - dragState.startX}, ΔY:{' '}
+              {dragState.currentY - dragState.startY >= 0 ? '+' : ''}
+              {dragState.currentY - dragState.startY})
+            </span>
+          </div>
+        )}
       </div>
     </div>
   );
