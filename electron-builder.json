@@ -1,0 +1,32 @@
+{
+  "$schema": "https://raw.githubusercontent.com/electron-userland/electron-builder/master/packages/app-builder-lib/scheme.json",
+  "appId": "com.makasna.broadcastcg",
+  "productName": "Makasna Broadcast CG",
+  "directories": {
+    "output": "release"
+  },
+  "files": [
+    "dist/**/*",
+    "package.json"
+  ],
+  "win": {
+    "target": [
+      {
+        "target": "nsis",
+        "arch": ["x64"]
+      },
+      {
+        "target": "portable",
+        "arch": ["x64"]
+      }
+    ],
+    "artifactName": "${productName}-Setup-${version}.${ext}"
+  },
+  "nsis": {
+    "oneClick": false,
+    "allowToChangeInstallationDirectory": true,
+    "createDesktopShortcut": true,
+    "createStartMenuShortcut": true,
+    "shortcutName": "Makasna Broadcast CG"
+  }
+}
