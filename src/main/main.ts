@@ -1,5 +1,6 @@
 import { app, BrowserWindow, ipcMain, screen } from 'electron';
 import path from 'path';
+import * as fs from 'fs';
 import { OutputServer } from './output-server';
 import { DeckLinkController } from './decklink-controller';
 import { FSWatcher, watch } from 'chokidar';
@@ -20,6 +21,10 @@ const decklinkController = new DeckLinkController();
 const isDev = process.env.NODE_ENV === 'development';
 
 async function createWindow() {
+  const iconPath = fs.existsSync(path.join(__dirname, '../renderer/assets/makasna-logo.png'))
+    ? path.join(__dirname, '../renderer/assets/makasna-logo.png')
+    : path.join(__dirname, '../../build/icon.png');
+
   mainWindow = new BrowserWindow({
     width: 1600,
     height: 960,
@@ -27,6 +32,7 @@ async function createWindow() {
     minHeight: 720,
     backgroundColor: '#090a0f',
     title: 'Makasna Broadcast CG Studio',
+    icon: iconPath,
     webPreferences: {
       preload: path.join(__dirname, '../preload/preload.js'),
       nodeIntegration: false,

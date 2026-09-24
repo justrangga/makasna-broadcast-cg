@@ -195,10 +195,14 @@ export const OutputSettingsModal: React.FC<OutputSettingsModalProps> = ({
         {/* Header */}
         <div className="h-14 bg-studio-850 border-b border-studio-800 px-6 flex items-center justify-between">
           <div className="flex items-center space-x-3">
-            <Radio className="w-5 h-5 text-rose-500" />
+            <img
+              src="./assets/makasna-logo.svg"
+              alt="Makasna"
+              className="w-6 h-6 object-contain drop-shadow-[0_0_8px_rgba(0,229,255,0.4)]"
+            />
             <div>
               <h2 className="font-bold text-white text-sm tracking-wide">
-                BROADCAST OUTPUT & HARDWARE ROUTING
+                MAKASNA BROADCAST OUTPUT & HARDWARE ROUTING
               </h2>
               <p className="text-[11px] text-slate-400">
                 Konfigurasi output video fisik (Blackmagic DeckLink SDI Key & Fill, Layar Sekunder HDMI, NDI)

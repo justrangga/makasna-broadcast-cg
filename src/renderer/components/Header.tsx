@@ -55,11 +55,13 @@ export const Header: React.FC = () => {
         {/* Left Brand & Workspace Mode Switcher */}
         <div className="flex items-center space-x-6">
           {/* Brand */}
-          <div className="flex items-center space-x-2">
-            <div className="w-6 h-6 rounded bg-gradient-to-tr from-cyan-600 to-rose-500 flex items-center justify-center font-bold text-xs text-white shadow">
-              M
-            </div>
-            <span className="font-extrabold text-sm tracking-wider text-white">
+          <div className="flex items-center space-x-2.5">
+            <img
+              src="./assets/makasna-logo.svg"
+              alt="Makasna"
+              className="w-7 h-7 object-contain drop-shadow-[0_0_10px_rgba(0,229,255,0.4)]"
+            />
+            <span className="font-black text-sm tracking-widest text-white">
               MAKASNA <span className="text-cyan-400 font-normal">BROADCAST CG</span>
             </span>
           </div>

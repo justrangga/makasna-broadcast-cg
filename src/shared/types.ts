@@ -127,7 +127,7 @@ export interface RepeaterConfig {
 export interface CGTemplate {
   id: string;
   name: string;
-  category: 'lower-third' | 'fullscreen' | 'scorebug' | 'leaderboard' | 'ticker';
+  category: 'lower-third' | 'fullscreen' | 'scorebug' | 'leaderboard' | 'ticker' | 'channel-bug';
   defaultLayer: LayerTarget;
   duration: number; // total duration in seconds
   markers: StateMarkers;
