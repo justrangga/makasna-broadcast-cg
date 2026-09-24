@@ -1,0 +1,54 @@
+name: Build & Release Windows Application
+
+on:
+  push:
+    branches: [ "main" ]
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  build-windows:
+    name: Build Windows x64 Installer & Portable
+    runs-on: windows-latest
+
+    steps:
+      - name: Checkout Source Code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js 20 LTS
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: 'npm'
+
+      - name: Install NPM Dependencies
+        run: npm ci
+
+      - name: Compile Frontend & Main Process
+        run: npm run build
+
+      - name: Package Windows Installer (.exe) & Portable Executable
+        run: npx electron-builder --win --x64
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Upload Build Artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: Makasna-Broadcast-CG-Windows-v1.0.0
+          path: |
+            release/*.exe
+            release/*.blockmap
+          retention-days: 30
+
+      - name: Publish or Update GitHub Release
+        shell: bash
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          gh release delete v1.0.0 --yes || true
+          gh release create v1.0.0 release/*.exe \
+            --title "Makasna Broadcast CG v1.0.0 (Windows)" \
+            --notes "Aplikasi Desktop Character Generator (CG) Windows Mandiri Berkinerja Tinggi untuk Penyiaran Live Televisi & Streaming."

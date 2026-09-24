@@ -1,7 +1,7 @@
 import React, { useRef } from 'react';
 import { useCGStore } from '@/store/useCGStore';
 import { CompositorStage } from '../engine/CompositorStage';
-import { Crosshair, Eye, Grid } from 'lucide-react';
+import { Crosshair, Eye, Grid, Database, Sparkles } from 'lucide-react';
 
 export const CanvasViewport: React.FC = () => {
   const {
@@ -16,11 +16,28 @@ export const CanvasViewport: React.FC = () => {
     setShowGuides,
     setShowActionSafe,
     setZoom,
+    updateLayer,
   } = useCGStore();
 
   const viewportRef = useRef<HTMLDivElement>(null);
 
   const activeTemplate = project.templates.find((t) => t.id === activeTemplateId);
+  const selectedLayer = activeTemplate?.layers.find((l) => l.id === selectedLayerId);
+
+  // All available headers across datasets
+  const availableColumns = Array.from(
+    new Set(project.datasets.flatMap((d) => d.headers))
+  );
+
+  const handleBindColumn = (col: string) => {
+    if (!activeTemplate || !selectedLayerId) return;
+    updateLayer(activeTemplate.id, selectedLayerId, {
+      dataBinding: {
+        column: col,
+        fallback: selectedLayer?.content.text || `[${col}]`,
+      },
+    });
+  };
 
   if (!activeTemplate) {
     return (
@@ -103,6 +120,30 @@ export const CanvasViewport: React.FC = () => {
             </button>
           </div>
         </div>
+      </div>
+
+      {/* Smart Data Mapping Chips Bar */}
+      <div className="h-8 bg-studio-850/80 border-b border-studio-800 px-4 flex items-center space-x-2 text-[11px] overflow-x-auto">
+        <span className="text-slate-400 font-mono font-bold flex items-center shrink-0 mr-1">
+          <Database className="w-3 h-3 text-cyan-400 mr-1" />
+          MAPPING CHIPS:
+        </span>
+        {availableColumns.map((col) => (
+          <button
+            key={col}
+            onClick={() => handleBindColumn(col)}
+            className="px-2.5 py-0.5 rounded-full bg-studio-950 border border-cyan-500/40 text-cyan-300 hover:bg-cyan-500/20 active:scale-95 transition font-mono shrink-0"
+            title={selectedLayer ? `Klik untuk menghubungkan [${col}] ke layer '${selectedLayer.name}'` : `Pilih layer terlebih dahulu lalu klik chip [${col}]`}
+          >
+            + [{col}]
+          </button>
+        ))}
+        {selectedLayer?.dataBinding?.column && (
+          <span className="text-[10px] text-emerald-400 font-mono ml-auto shrink-0 flex items-center bg-emerald-950/60 px-2 py-0.5 rounded border border-emerald-500/30">
+            <Sparkles className="w-3 h-3 mr-1" />
+            Layer '{selectedLayer.name}' terhubung ke: [{selectedLayer.dataBinding.column}]
+          </span>
+        )}
       </div>
 
       {/* Main Interactive Stage Area */}

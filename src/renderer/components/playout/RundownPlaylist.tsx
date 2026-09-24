@@ -35,6 +35,7 @@ export const RundownPlaylist: React.FC = () => {
 
   const [editingItemId, setEditingItemId] = useState<string | null>(null);
   const [editOverrides, setEditOverrides] = useState<Record<string, string | number>>({});
+  const [copiedUrl, setCopiedUrl] = useState(false);
 
   const handleStartEdit = (item: (typeof rundown)[0]) => {
     setEditingItemId(item.id);
@@ -44,6 +45,34 @@ export const RundownPlaylist: React.FC = () => {
   const handleSaveEdit = (itemId: string) => {
     updateRundownItem(itemId, { dataOverrides: editOverrides });
     setEditingItemId(null);
+  };
+
+  const handleToggleSecondaryOutput = () => {
+    const next = !isSecondaryWindowOpen;
+    setSecondaryWindowOpen(next);
+    if ((window as any).electronAPI?.openSecondaryOutput) {
+      if (next) {
+        (window as any).electronAPI.openSecondaryOutput();
+      } else {
+        (window as any).electronAPI.closeSecondaryOutput();
+      }
+    } else {
+      if (next) {
+        window.open('?output=pgm', 'BroadcastOutput', 'width=1920,height=1080');
+      }
+    }
+  };
+
+  const handleCopyBrowserSource = () => {
+    navigator.clipboard.writeText('http://localhost:4989/?output=pgm');
+    setCopiedUrl(true);
+    setTimeout(() => setCopiedUrl(false), 2500);
+  };
+
+  const handleTakeAll = () => {
+    rundown.forEach((item) => {
+      takeItemDirect(item.id);
+    });
   };
 
   return (
@@ -61,11 +90,19 @@ export const RundownPlaylist: React.FC = () => {
           </button>
 
           <button
+            onClick={() => handleTakeAll()}
+            className="flex items-center space-x-1.5 px-4 py-2.5 bg-amber-600 hover:bg-amber-500 text-white font-bold text-xs rounded active:scale-95 transition"
+            title="Take All Graphics onto their respective layers"
+          >
+            <span>⚡ TAKE ALL</span>
+          </button>
+
+          <button
             onClick={() => clearAll()}
             className="flex items-center space-x-2 px-5 py-2.5 bg-slate-800 hover:bg-slate-700 text-rose-300 border border-slate-700 font-bold rounded active:scale-95 transition"
           >
             <Square className="w-4 h-4 fill-current text-rose-500" />
-            <span>⏹ CLEAR ALL</span>
+            <span>⏹ CLEAR ALL (ESC)</span>
           </button>
         </div>
 
@@ -92,6 +129,20 @@ export const RundownPlaylist: React.FC = () => {
 
         {/* Broadcast Output Toggles (NDI & HDMI Window) */}
         <div className="flex items-center space-x-2">
+          {/* OBS / vMix Browser Source URL Copy */}
+          <button
+            onClick={handleCopyBrowserSource}
+            className={`flex items-center space-x-1.5 px-3 py-1.5 rounded text-xs font-semibold border transition ${
+              copiedUrl
+                ? 'bg-emerald-500/20 text-emerald-300 border-emerald-400'
+                : 'bg-studio-800 text-slate-300 border-studio-700 hover:bg-studio-750'
+            }`}
+            title="Salin URL Browser Source Alpha untuk vMix / OBS Studio"
+          >
+            <ExternalLink className="w-3.5 h-3.5" />
+            <span>{copiedUrl ? 'COPIED :4989' : 'OBS/vMix URL'}</span>
+          </button>
+
           {/* NDI Output Toggle */}
           <button
             onClick={() => setNDIActive(!isNDIActive)}
@@ -102,12 +153,12 @@ export const RundownPlaylist: React.FC = () => {
             }`}
           >
             <Wifi className="w-3.5 h-3.5" />
-            <span>NDI: {isNDIActive ? 'ON AIR (1080p60)' : 'STANDBY'}</span>
+            <span>NDI: {isNDIActive ? '1080p60 ON AIR' : 'STANDBY'}</span>
           </button>
 
           {/* Secondary Fullscreen Output Toggle */}
           <button
-            onClick={() => setSecondaryWindowOpen(!isSecondaryWindowOpen)}
+            onClick={handleToggleSecondaryOutput}
             className={`flex items-center space-x-1.5 px-3 py-1.5 rounded text-xs font-semibold border transition ${
               isSecondaryWindowOpen
                 ? 'bg-emerald-500/20 text-emerald-300 border-emerald-400'
